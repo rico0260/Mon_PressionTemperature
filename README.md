@@ -1,3 +1,3 @@
 # Mon_PressionTemperature
 
-Pour mySensors 2.3.2
+For 'Home assistant' with mySensors 2.3.2
