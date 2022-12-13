@@ -114,7 +114,7 @@ void presentation()
   strcat(sChild0, " Tension pile");
   Serial.println(sChild0);
   Serial.println("  S_MULTIMETER");
-  present(PILE_CHILD, S_MULTIMETER, sChild0);      // type S_CUSTOM pour le capteur "tension"
+  present(PILE_CHILD, S_MULTIMETER, sChild0); 
   wait(LONG_WAIT2);
 
   // Temperature
