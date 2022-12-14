@@ -190,15 +190,15 @@ void loop() {
     //send(msgPrefix.set("custom_lux"));  // Set custom unit.
     Serial.println("Sending initial value");
     send(msgPILE.set(newVcc,3));
-    wait(LONG_WAIT);
+    wait(LONG_WAIT2);
     sendBatteryLevel(lastPct);
-    wait(LONG_WAIT);
+    wait(LONG_WAIT2);
     send(msgTEMP.set(temperature,1));
-    wait(LONG_WAIT);
+    wait(LONG_WAIT2);
     send(msgPRESSION.set(pressure,1));
-    wait(LONG_WAIT);
+    wait(LONG_WAIT2);
     send(msgPREVISION.set(weather[forecast]));
-    wait(LONG_WAIT);
+    wait(LONG_WAIT2);
     first_message_sent = true;
   }
   
@@ -217,15 +217,15 @@ void loop() {
   #endif
 
   if (temperature != lastTemp) {
-    send(msgTEMP.set(temperature,1));
     lastTemp = temperature;
-    wait(SHORT_WAIT);
+    send(msgTEMP.set(temperature,1));
+    //wait(SHORT_WAIT);
   }
 
   if (pressure != lastPressure) {
-    send(msgPRESSION.set(pressure, 1));
     lastPressure = pressure;
-    wait(SHORT_WAIT);
+    send(msgPRESSION.set(pressure, 1));
+    //wait(SHORT_WAIT);
   }
 
   if (forecast != lastForecast) {
@@ -238,9 +238,9 @@ void loop() {
     4 = "Quickly falling L-Press",    "Thunderstorm"
     5 = "Unknown (More Time needed) 
     */  
-    send(msgPREVISION.set(weather[forecast]));
     lastForecast = forecast;
-    wait(SHORT_WAIT);
+    send(msgPREVISION.set(weather[forecast]));
+    //wait(SHORT_WAIT);
   }
   
   //mesure de la batterie
@@ -250,7 +250,7 @@ void loop() {
     if (newVcc != lastVcc) {
       lastVcc = newVcc;
       send(msgPILE.set(lastVcc, 3));      // 2 décimales
-      wait(SHORT_WAIT);
+      //wait(SHORT_WAIT);
       #ifdef DEBUG
         Serial.print("Tension piles = ");
         Serial.print(lastVcc);
@@ -262,7 +262,7 @@ void loop() {
     if (newPct != lastPct) {
       lastPct = newPct;
       sendBatteryLevel(lastPct);
-      wait(SHORT_WAIT);
+      //wait(SHORT_WAIT);
       #ifdef DEBUG
         Serial.print("niveau batterie = ");
         Serial.print(lastPct);
