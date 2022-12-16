@@ -13,14 +13,25 @@
 //#define MY_RADIO_RFM69
 //#define MY_RADIO_RFM95
 
+//Options: RF24_PA_MIN, RF24_PA_LOW, (RF24_PA_HIGH), RF24_PA_MAX
+//#define MY_RF24_PA_LEVEL RF24_PA_MAX
+
 //Non car sur pile
 //#define MY_REPEATER_FEATURE
+
+//MY_RF24_CHANNEL par defaut 76
+//Channels: 1 to 126 - 76 = Channel 77
+//MY_RF24_CHANNEL (76)
+#define MY_RF24_CHANNEL 81
 
 //#define MY_NODE_ID AUTO
 #define MY_NODE_ID 20
 
-//MY_RF24_CHANNEL par defaut 76
-#define MY_RF24_CHANNEL 81
+//======== Ne pas utiliser cette fonction avec ce noeud ===========
+//#define MY_RX_MESSAGE_BUFFER_FEATURE //for MY_RF24_IRQ_PIN
+//Define this to use the IRQ pin of the RF24 module
+//#define MY_RF24_IRQ_PIN (2)
+//======== Ne pas utiliser cette fonction avec ce noeud ===========
 
 #include <SPI.h>
 #include <MySensors.h>  
@@ -45,10 +56,10 @@ Adafruit_BMP085 bmp = Adafruit_BMP085(); // Digital Pressure Sensor
 
 unsigned int VCC_TIME = 60; // minutes //* 60000; // temps en 60 x 1 minute
 unsigned int VccCount = 100; //superieur a VCC_TIME pour retourner la premiere mesures 
-float lastVcc;
 float newVcc;
 int newPct;
-int lastPct;
+float lastVcc = -100.0;
+int lastPct = -1;
 // Attention changer le BOD à 1.8V voir déactivé (sinon arret à 2.7V car BOD à 2.7V)
 // et voir aussi pour les alimentations des capteurs
 const float VccMin = 2.0*1.0; // Minimum expected Vcc level, in Volts. Example for 2xAA Alkaline.
@@ -56,8 +67,8 @@ const float VccMax = 2.0*1.6; //1.614;  // Maximum expected Vcc level, in Volts.
 const float VccCorrection = 3.215/3.15; // Measured Vcc by multimeter divided by reported Vcc
 Vcc vcc(VccCorrection);
 
-float lastPressure = -1;
-float lastTemp = -1;
+float lastPressure = -100.0;
+float lastTemp = -100.0;
 int lastForecast = -1;
 int forecast;
 
@@ -91,20 +102,18 @@ int sample(float pressure);
 
 void presentation()  
 { 
-  Serial.print("===> Envoyer présentation pour noeud : ");
-  Serial.println(MY_NODE_ID);
+  Serial.print("===> Envoyer présentation du noeud : "); Serial.println(MY_NODE_ID);
 
   char sNoeud[] = STR(MY_NODE_ID);
 
   // Send the Sketch Version Information to the Gateway
-  Serial.println("Envoyer SketchInfo");
+  Serial.println("===> Présenter SketchInfo");
   Serial.print(SKETCH_NAME); Serial.print(" "); Serial.println(SKETCH_VERSION);
   sendSketchInfo(SKETCH_NAME, SKETCH_VERSION);
   wait(LONG_WAIT2);
 
   // Register all sensors to gw (they will be created as child devices)
-  Serial.print("Envoyer présentation pour noeud : "); Serial.println(MY_NODE_ID);
-  Serial.println("Presenting Childs");
+  Serial.println("===> Presenting Childs");
   Serial.println("________________");
   
   //  Pile
@@ -112,8 +121,7 @@ void presentation()
   strcpy(sChild0, "myS ");
   strcat(sChild0, sNoeud);
   strcat(sChild0, " Tension pile");
-  Serial.println(sChild0);
-  Serial.println("  S_MULTIMETER");
+  Serial.print("S_MULTIMETER: "); Serial.println(sChild0);
   present(PILE_CHILD, S_MULTIMETER, sChild0); 
   wait(LONG_WAIT2);
 
@@ -122,8 +130,7 @@ void presentation()
   strcpy(sChild1, "myS ");
   strcat(sChild1, sNoeud);
   strcat(sChild1, " Temperature");
-  Serial.println(sChild1);
-  Serial.println("  S_TEMP");
+  Serial.print("S_TEMP: "); Serial.println(sChild1);
   present(TEMP_CHILD, S_TEMP, sChild1);
   wait(LONG_WAIT2);
 
@@ -132,17 +139,15 @@ void presentation()
   strcpy(sChild2, "myS ");
   strcat(sChild2, sNoeud);
   strcat(sChild2, " Pression");
-  Serial.println(sChild2);
-  Serial.println("  S_BARO");
+  Serial.print("S_BARO: "); Serial.println(sChild2);
   present(BARO_CHILD, S_BARO, sChild2);
   wait(LONG_WAIT2);
 
   // Get controller configuration
-  Serial.print("Get Config: ");
   metric = getControllerConfig().isMetric;
-  Serial.println(metric ? "Metric":"Imperial");
-  wait(LONG_WAIT2);
-  
+  #ifdef MY_DEBUG 
+    Serial.print("Get Config: "); Serial.println(metric ? "Metric":"Imperial");
+  #endif
 }
 
 void setup()
@@ -157,18 +162,10 @@ void setup()
 
   //newVcc = readVcc();
   newVcc = vcc.Read_Volts();
-  Serial.print("Batterie = ");
-  Serial.print(newVcc);
-  Serial.println(" mV");
+  Serial.print("Batterie = "); Serial.print(newVcc); Serial.println(" mV");
   // Içi entre 2V a 3.2V pour 2 LR6 --> 0% a 100%
   lastPct = vcc.Read_Perc(VccMin, VccMax);
-  Serial.print("Pourcentage batterie = ");
-  Serial.print(lastPct);
-  Serial.println(" %");
- 
-  wait(LONG_WAIT);
-
-  Serial.println("GW Started");
+  Serial.print("Pourcentage batterie = "); Serial.print(lastPct); Serial.println(" %");
 
 }
 
@@ -185,35 +182,28 @@ void loop() {
     temperature = temperature * 9.0 / 5.0 + 32.0;
   }
   
-  //pour Home Assistant
-  if (!first_message_sent) {
-    //send(msgPrefix.set("custom_lux"));  // Set custom unit.
-    Serial.println("Sending initial value");
-    send(msgPILE.set(newVcc,3));
-    wait(LONG_WAIT2);
-    sendBatteryLevel(lastPct);
-    wait(LONG_WAIT2);
-    send(msgTEMP.set(temperature,1));
-    wait(LONG_WAIT2);
-    send(msgPRESSION.set(pressure,1));
-    wait(LONG_WAIT2);
-    send(msgPREVISION.set(weather[forecast]));
-    wait(LONG_WAIT2);
-    first_message_sent = true;
-  }
+  // //pour Home Assistant
+  // if (!first_message_sent) {
+  //   //send(msgPrefix.set("custom_lux"));  // Set custom unit.
+  //   Serial.println("Sending initial value");
+  //   send(msgPILE.set(newVcc,3));
+  //   wait(LONG_WAIT2);
+  //   sendBatteryLevel(lastPct);
+  //   wait(LONG_WAIT2);
+  //   send(msgTEMP.set(temperature,1));
+  //   wait(LONG_WAIT2);
+  //   send(msgPRESSION.set(pressure,1));
+  //   wait(LONG_WAIT2);
+  //   send(msgPREVISION.set(weather[forecast]));
+  //   wait(LONG_WAIT2);
+  //   first_message_sent = true;
+  // }
   
-  #ifdef DEBUG 
-    Serial.print("Temperature = ");
-    Serial.print(temperature);
-    Serial.println(metric?" *C":" *F");
-    Serial.print("Pressure = ");
-    Serial.print(pressure);
-    Serial.println(" hPa"); // ou milliBar
-    Serial.print("weather = ");
-    Serial.println(weather[forecast]);
-    Serial.print("Pile = ");
-    Serial.print(newVcc);
-    Serial.println(" V");
+  #ifdef MY_DEBUG 
+    Serial.print("Temperature = "); Serial.print(temperature); Serial.println(metric?" *C":" *F");
+    Serial.print("Pressure = "); Serial.print(pressure); Serial.println(" hPa"); // ou milliBar
+    Serial.print("weather = "); Serial.println(weather[forecast]);
+    Serial.print("Pile = "); Serial.print(newVcc); Serial.println(" V");
   #endif
 
   if (temperature != lastTemp) {
@@ -251,10 +241,8 @@ void loop() {
       lastVcc = newVcc;
       send(msgPILE.set(lastVcc, 3));      // 2 décimales
       //wait(SHORT_WAIT);
-      #ifdef DEBUG
-        Serial.print("Tension piles = ");
-        Serial.print(lastVcc);
-        Serial.println(" V");
+      #ifdef MY_DEBUG
+        Serial.print("Tension piles = "); Serial.print(lastVcc); Serial.println(" V");
       #endif
     }
     //pct = 100 * (lastVcc-2400) / 820; // 3280-2400=880mV  
@@ -263,10 +251,8 @@ void loop() {
       lastPct = newPct;
       sendBatteryLevel(lastPct);
       //wait(SHORT_WAIT);
-      #ifdef DEBUG
-        Serial.print("niveau batterie = ");
-        Serial.print(lastPct);
-        Serial.println(" %");
+      #ifdef MY_DEBUG
+        Serial.print("niveau batterie = "); Serial.print(lastPct); Serial.println(" %");
       #endif
     }
     VccCount = 0; // soit toute les heures
