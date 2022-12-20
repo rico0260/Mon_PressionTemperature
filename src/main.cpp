@@ -298,6 +298,16 @@ void loop() {
   
 }
 
+void receive(const MyMessage &message) {
+    
+  if (message.isAck()) {
+    #ifdef MY_DEBUG
+      Serial.println("This is an ack from gateway");
+      Serial.print("Type message "); Serial.println(message.type);
+    #endif
+  }
+}
+
 int sample(float pressure) {
 	// Algorithm found here
 	// http://www.freescale.com/files/sensors/doc/app_note/AN3914.pdf
