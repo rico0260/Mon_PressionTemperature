@@ -1,4 +1,10 @@
-#include <Arduino.h>
+/*******************************************
+ * 
+ * Auteur : Eric H
+ * Date : 20/12/2022
+ * 
+ *******************************************/
+ #include <Arduino.h>
 
 #include <Vcc.h>
 //#include <LowPower.h>
@@ -21,8 +27,7 @@
 
 //MY_RF24_CHANNEL par defaut 76
 //Channels: 1 to 126 - 76 = Channel 77
-//MY_RF24_CHANNEL (76)
-#define MY_RF24_CHANNEL 81
+#include <perso.h>
 
 //#define MY_NODE_ID AUTO
 #define MY_NODE_ID 20
@@ -88,8 +93,8 @@ bool first_message_sent = false;
 MyMessage msgPILE(PILE_CHILD, V_VOLTAGE); // V_VOLTAGE
 MyMessage msgTEMP(TEMP_CHILD, V_TEMP);
 MyMessage msgPRESSION(BARO_CHILD, V_PRESSURE);
+MyMessage msgPRESSIONPrefix(BARO_CHILD, V_UNIT_PREFIX);  // Custom unit message.
 MyMessage msgPREVISION(BARO_CHILD, V_FORECAST);
-//MyMessage msgPrefix(BARO_CHILD, V_UNIT_PREFIX);  // Custom unit message.
 
 int oldClkPr;
 
@@ -182,10 +187,11 @@ void loop() {
     temperature = temperature * 9.0 / 5.0 + 32.0;
   }
   
-  // //pour Home Assistant
-  // if (!first_message_sent) {
-  //   //send(msgPrefix.set("custom_lux"));  // Set custom unit.
-  //   Serial.println("Sending initial value");
+  //Pour Home assistant
+  if (!first_message_sent) {
+    Serial.println("======> Sending initial value");
+    send(msgPRESSIONPrefix.set("hPa"));  // hPa = mbar - Set custom unit.
+    wait(LONG_WAIT2);
   //   send(msgPILE.set(newVcc,3));
   //   wait(LONG_WAIT2);
   //   sendBatteryLevel(lastPct);
@@ -196,8 +202,8 @@ void loop() {
   //   wait(LONG_WAIT2);
   //   send(msgPREVISION.set(weather[forecast]));
   //   wait(LONG_WAIT2);
-  //   first_message_sent = true;
-  // }
+    first_message_sent = true;
+  }
   
   #ifdef MY_DEBUG 
     Serial.print("Temperature = "); Serial.print(temperature); Serial.println(metric?" *C":" *F");
@@ -299,13 +305,20 @@ void loop() {
 }
 
 void receive(const MyMessage &message) {
-    
+
   if (message.isAck()) {
     #ifdef MY_DEBUG
       Serial.println("This is an ack from gateway");
       Serial.print("Type message "); Serial.println(message.type);
-    #endif
+    #endif  
   }
+  // else if (message.type == V_UNIT_PREFIX) {
+  //   if (!first_message_sent) {
+  //     Serial.println("Receiving initial value from controller");
+  //     first_message_sent = true;
+  //   }
+  // }
+
 }
 
 int sample(float pressure) {
