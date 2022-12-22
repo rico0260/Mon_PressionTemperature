@@ -46,6 +46,7 @@
 #define PILE_CHILD 0
 #define TEMP_CHILD 1
 #define BARO_CHILD 2
+#define FORCAST_CHILD 3
 
 // Wait times
 #define LONG_WAIT 500
@@ -53,7 +54,7 @@
 #define SHORT_WAIT 50
 
 #define SKETCH_NAME "Pressure Sensor"
-#define SKETCH_VERSION "2.0"
+#define SKETCH_VERSION "2.1"
 
 unsigned long SLEEP_TIME = 60000; // Sleep time between reads (in µseconds)
 
@@ -94,7 +95,7 @@ MyMessage msgPILE(PILE_CHILD, V_VOLTAGE); // V_VOLTAGE
 MyMessage msgTEMP(TEMP_CHILD, V_TEMP);
 MyMessage msgPRESSION(BARO_CHILD, V_PRESSURE);
 MyMessage msgPRESSIONPrefix(BARO_CHILD, V_UNIT_PREFIX);  // Custom unit message.
-MyMessage msgPREVISION(BARO_CHILD, V_FORECAST);
+MyMessage msgPREVISION(FORCAST_CHILD, V_FORECAST);
 
 int oldClkPr;
 
@@ -146,6 +147,15 @@ void presentation()
   strcat(sChild2, " Pression");
   Serial.print("S_BARO: "); Serial.println(sChild2);
   present(BARO_CHILD, S_BARO, sChild2);
+  wait(LONG_WAIT2);
+
+  //Forcast 
+  char sChild3[25];
+  strcpy(sChild3, "myS ");
+  strcat(sChild3, sNoeud);
+  strcat(sChild3, " Forcast");
+  Serial.print("S_BARO: "); Serial.println(sChild3);
+  present(FORCAST_CHILD, S_BARO, sChild3);
   wait(LONG_WAIT2);
 
   // Get controller configuration
@@ -205,6 +215,8 @@ void loop() {
   //   send(msgPREVISION.set(weather[forecast]));
   //   wait(LONG_WAIT2);
     first_message_sent = true;
+    Serial.println("======> Début du fonctionnement");
+    //Serial.println("======> Start of operation");
   }
   
   #ifdef MY_DEBUG 
