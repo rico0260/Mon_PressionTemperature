@@ -190,6 +190,8 @@ void loop() {
   //Pour Home assistant
   if (!first_message_sent) {
     Serial.println("======> Sending initial value");
+    //send(msgPRESSION.set(pressure, 1));
+    //wait(LONG_WAIT2);    
     send(msgPRESSIONPrefix.set("hPa"));  // hPa = mbar - Set custom unit.
     wait(LONG_WAIT2);
   //   send(msgPILE.set(newVcc,3));
